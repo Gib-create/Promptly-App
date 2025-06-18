@@ -77,7 +77,9 @@
   </div>
 
   <script>
-  const supabase = supabase.createClient(
+
+  const client = window.supabase.createClient(  
+    
 'https://nzhyjnsxgrkckjxwesbk.supabase.co',
 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
   );
@@ -86,7 +88,7 @@
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
 
     if (error) {
       document.getElementById('login-error').innerText = error.message;
@@ -98,7 +100,7 @@
   }
 
   async function loadAssets() {
-    const { data, error } = await supabase.from('assets').select('*');
+    const { data, error } = await client.from('assets').select('*');
     const container = document.getElementById('assets');
 
     if (error) {
@@ -116,7 +118,7 @@
   }
 
   async function logout() {
-    await supabase.auth.signOut();
+    await client.auth.signOut();
     location.reload();
   }
 </script>
