@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Promptly – Login & Asset Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 2rem;
+    }
+    h2, h3 {
+      text-align: center;
+    }
+    #login-form, #asset-view {
+      max-width: 400px;
+      margin: 2rem auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    input, button {
+      display: block;
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #004c99;
+    }
+    .hidden {
+      display: none;
+    }
+    .asset-card {
+      background: #fff;
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+    .logout-btn {
+      background-color: #e74c3c;
+    }
+    .logout-btn:hover {
+      background-color: #c0392b;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Promptly Login</h2>
+
+  <div id="login-form">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Log In</button>
+    <p id="login-error" style="color: red;"></p>
+  </div>
+
+  <div id="asset-view" class="hidden">
+    <h3>Welcome to Promptly</h3>
+    <button class="logout-btn" onclick="logout()">Log Out</button>
+    <div id="assets"></div>
+  </div>
+
+  <script>
+    const supabase = supabase.createClient(
+      'https://nzhyjnsxgrkckjxwesbk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70
+    );
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        document.getElementById('login-error').innerText = error.message;
+      } else {
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('asset-view').classList.remove('hidden');
+        loadAssets();
+      }
+    }
+
+    async function loadAssets() {
+      const { data, error } = await supabase.from('assets').select('*');
+      const container = document.getElementById('assets');
+
+      if (error) {
+        container.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+      } else if (data.length === 0) {
+        container.innerHTML = `<p>No assets found.</p>`;
+      } else {
+        container.innerHTML = data.map(asset => `
+          <div class="asset-card">
+            <strong>${asset.name}</strong><br/>
+            <small>${asset.description || 'No description provided.'}</small>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      location.reload();
+    }
+  </script>
+</body>
+</html>
