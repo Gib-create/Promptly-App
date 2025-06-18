@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Asset Dashboard – Promptly</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #eef2f5;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+    }
+    .back-btn {
+      margin-top: 1rem;
+      display: inline-block;
+      background-color: #6c757d;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+    }
+    .back-btn:hover {
+      background-color: #5a6268;
+    }
+    .detail {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f9f9f9;
+    }
+    .label {
+      font-weight: bold;
+    }
+    #qr-code {
+      margin: 2rem auto;
+      width: fit-content;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Asset Dashboard</h2>
+    <div class="detail">
+      <div><span class="label">Name:</span> <span id="asset-name">Loading...</span></div>
+      <div><span class="label">Description:</span> <span id="asset-description">Loading...</span></div>
+      <div><span class="label">Identifier:</span> <span id="asset-id">Loading...</span></div>
+    </div>
+    <div id="qr-code"></div>
+    <a href="index.html" class="back-btn">← Back to Viewer</a>
+  </div>
+
+  <script>
+    const client = window.supabase.createClient(
+      'https://nzhyjnsxgrkckjxwesbk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const assetId = params.get('id');
+
+    async function checkSessionAndLoad() {
+      const { data: { session } } = await client.auth.getSession();
+
+      if (!session) {
+        // Not logged in, store asset ID and redirect to login
+        localStorage.setItem('redirect_asset', assetId);
+        window.location.href = 'field.login.html';
+        return;
+      }
+
+      loadAsset();
+    }
+
+    async function loadAsset() {
+      const { data, error } = await client.from('assets').select('*').eq('identifier', assetId).single();
+      if (error || !data) {
+        document.getElementById('asset-name').innerText = "Not found";
+        document.getElementById('asset-description').innerText = "N/A";
+        document.getElementById('asset-id').innerText = "N/A";
+      } else {
+        document.getElementById('asset-name').innerText = data.name;
+        document.getElementById('asset-description').innerText = data.description || "None";
+        document.getElementById('asset-id').innerText = data.identifier;
+        QRCode.toCanvas(document.createElement("canvas"), window.location.href, function (err, canvas) {
+          if (!err) document.getElementById('qr-code').appendChild(canvas);
+        });
+      }
+    }
+
+    checkSessionAndLoad();
+  </script>
+</body>
+</html>
