@@ -77,51 +77,48 @@
   </div>
 
   <script>
-    const supabase = supabase.createClient(
-      'https://nzhyjnsxgrkckjxwesbk.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70
-    );
+  const supabase = supabase.createClient(
+'https://nzhyjnsxgrkckjxwesbk.supabase.co',
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
+  );
 
-    async function login() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+  async function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        document.getElementById('login-error').innerText = error.message;
-      } else {
-        document.getElementById('login-form').classList.add('hidden');
-        document.getElementById('asset-view').classList.remove('hidden');
-        loadAssets();
-      }
+    if (error) {
+      document.getElementById('login-error').innerText = error.message;
+    } else {
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('asset-view').classList.remove('hidden');
+      loadAssets();
     }
+  }
 
-    async function loadAssets() {
-      const { data, error } = await supabase.from('assets').select('*');
-      const container = document.getElementById('assets');
+  async function loadAssets() {
+    const { data, error } = await supabase.from('assets').select('*');
+    const container = document.getElementById('assets');
 
-      if (error) {
-        container.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-      } else if (data.length === 0) {
-        container.innerHTML = `<p>No assets found.</p>`;
-      } else {
-        container.innerHTML = data.map(asset => `
-          <div class="asset-card">
-            <strong>${asset.name}</strong><br/>
-            <small>${asset.description || 'No description provided.'}</small>
-          </div>
-        `).join('');
-      }
+    if (error) {
+      container.innerHTML = `<p>Error loading assets: ${error.message}</p>`;
+    } else if (data.length === 0) {
+      container.innerHTML = `<p>No assets found.</p>`;
+    } else {
+      container.innerHTML = data.map(asset => `
+        <div class="asset-card">
+          <strong>${asset.name}</strong><br/>
+          <small>${asset.description || 'No description'}</small>
+        </div>
+      `).join('');
     }
+  }
 
-    async function logout() {
-      await supabase.auth.signOut();
-      location.reload();
-    }
-  </script>
+  async function logout() {
+    await supabase.auth.signOut();
+    location.reload();
+  }
+</script>
 </body>
 </html>
