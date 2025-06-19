@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Promptly – Asset Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    h2 {
+      text-align: center;
+    }
+    .asset-info {
+      margin-bottom: 1rem;
+    }
+    .asset-info p {
+      margin: 0.3rem 0;
+    }
+    #qr-code {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+    }
+    input[type="file"] {
+      width: 100%;
+      margin: 1rem 0;
+    }
+    button {
+      background-color: #0066cc;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+    button:hover {
+      background-color: #005bb5;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #eef;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img id="qr-code" src="" alt="QR Code" width="100" height="100" />
+    <h2>Promptly – Asset Dashboard</h2>
+    <div class="asset-info">
+      <p><strong>Name:</strong> <span id="name">Loading...</span></p>
+      <p><strong>Description:</strong> <span id="description">Loading...</span></p>
+      <p><strong>Identifier:</strong> <span id="identifier">Loading...</span></p>
+    </div>
+
+    <input type="file" id="fileInput" />
+    <button onclick="uploadFile()">Upload File</button>
+
+    <h3>Files:</h3>
+    <ul id="file-list">Loading...</ul>
+
+    <button onclick="window.location.href='index.html'">← Back to Viewer</button>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const supabase = createClient(
+      'https://nzhyjnsxgrkckjxwesbk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
+    );
+
+    const params = new URLSearchParams(window.location.search);
+    const assetId = params.get('id');
+
+    async function loadAsset() {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('identifier', assetId)
+        .single();
+
+      if (error || !data) {
+        document.getElementById('name').innerText = 'Not found';
+        document.getElementById('description').innerText = 'N/A';
+        document.getElementById('identifier').innerText = 'N/A';
+        return;
+      }
+
+      document.getElementById('name').innerText = data.name;
+      document.getElementById('description').innerText = data.description;
+      document.getElementById('identifier').innerText = data.identifier;
+      if (data.qr_url) {
+        document.getElementById('qr-code').src = data.qr_url;
+      }
+    }
+
+    async function listFiles() {
+      const { data, error } = await supabase.storage
+        .from('asset-files')
+        .list(assetId + '/');
+
+      const listEl = document.getElementById('file-list');
+      listEl.innerHTML = '';
+
+      if (error || !data || data.length === 0) {
+        listEl.innerHTML = '<li>No files found.</li>';
+        return;
+      }
+
+      for (const file of data) {
+        const link = document.createElement('a');
+        link.textContent = file.name;
+        link.href = '#';
+        link.onclick = async () => {
+          const { data: downloadData } = await supabase.storage
+            .from('asset-files')
+            .createSignedUrl(assetId + '/' + file.name, 60);
+          window.open(downloadData.signedUrl, '_blank');
+        };
+        const li = document.createElement('li');
+        li.appendChild(link);
+        listEl.appendChild(li);
+      }
+    }
+
+    window.uploadFile = async function () {
+      const file = document.getElementById('fileInput').files[0];
+      if (!file) return alert('Please choose a file');
+
+      const { error } = await supabase.storage
+        .from('asset-files')
+        .upload(`${assetId}/${file.name}`, file, { upsert: true });
+
+      if (error) {
+        alert('Upload failed');
+        console.error(error);
+      } else {
+        alert('Upload successful');
+        listFiles();
+      }
+    }
+
+    loadAsset();
+    listFiles();
+  </script>
+</body>
+</html>
