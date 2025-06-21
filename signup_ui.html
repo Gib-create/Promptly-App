@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Promptly – Sign Up</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f7f9fb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+    h2 {
+      text-align: center;
+      color: #1e3a8a;
+      margin-bottom: 1rem;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #1e3a8a;
+      color: white;
+      border: none;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #153176;
+      cursor: pointer;
+    }
+    .link {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    .link a {
+      color: #1e3a8a;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .link a:hover {
+      text-decoration: underline;
+    }
+    .error {
+      color: red;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+    .success {
+      color: green;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Create a Root Account</h2>
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button onclick="signup()">Sign Up</button>
+    <p class="error" id="signup-error"></p>
+    <p class="success" id="signup-success"></p>
+    <div class="link">Already registered? <a href="field.login.html">Log in</a></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const client = window.supabase.createClient(
+      'https://nzhyjnsxgrkckjxwesbk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...your_anon_key_here...'
+    );
+
+    async function signup() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const { data, error } = await client.auth.signUp({ email, password });
+
+      if (error) {
+        document.getElementById('signup-error').innerText = error.message;
+        document.getElementById('signup-success').innerText = '';
+      } else {
+        const userId = data.user.id;
+        await client.from('users').insert({
+          auth_id: userId,
+          email,
+          role: 'root',
+          status: 'pending'  // Needs approval manually or via admin UI
+        });
+
+        document.getElementById('signup-success').innerText = 'Account created. Awaiting approval.';
+        document.getElementById('signup-error').innerText = '';
+      }
+    }
+  </script>
+</body>
+</html>
