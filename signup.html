@@ -1,117 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Promptly – Sign Up</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
   <style>
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f7f9fb;
       display: flex;
-      justify-content: center;
       align-items: center;
-      height: 100vh;
-      margin: 0;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #f8f9fa;
     }
-    .container {
-      background: #fff;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 100%;
+    .card {
       max-width: 400px;
+      padding: 2rem;
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
     }
     h2 {
       text-align: center;
-      color: #1e3a8a;
-      margin-bottom: 1rem;
+      margin-bottom: 1.5rem;
     }
-    input, select, button {
-      width: 100%;
-      padding: 0.75rem;
-      margin-top: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 1rem;
-    }
-    button {
-      background-color: #1e3a8a;
-      color: white;
-      border: none;
-      font-weight: bold;
-    }
-    button:hover {
-      background-color: #153176;
-      cursor: pointer;
-    }
-    .link {
-      text-align: center;
+    .error, .success {
       margin-top: 1rem;
-      font-size: 0.9rem;
-    }
-    .link a {
-      color: #1e3a8a;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .link a:hover {
-      text-decoration: underline;
+      text-align: center;
     }
     .error {
       color: red;
-      font-size: 0.85rem;
-      margin-top: 0.5rem;
     }
     .success {
       color: green;
-      font-size: 0.9rem;
-      margin-top: 1rem;
-      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div class="container">
+  <main class="card">
     <h2>Create a Root Account</h2>
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Password" required />
-    <button onclick="signup()">Sign Up</button>
-    <p class="error" id="signup-error"></p>
-    <p class="success" id="signup-success"></p>
-    <div class="link">Already registered? <a href="field.login.html">Log in</a></div>
-  </div>
+    <form id="signup-form">
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <button type="submit">Sign Up</button>
+    </form>
+    <div class="error" id="error-message"></div>
+    <div class="success" id="success-message"></div>
+    <p style="text-align: center;">Already registered? <a href="field_login_ui.html">Log in</a></p>
+  </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    const client = window.supabase.createClient(
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const supabase = createClient(
       'https://nzhyjnsxgrkckjxwesbk.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeXdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTg5NzAxMzYsImV4cCI6MjAzNDU0NjEzNn0.mRs9CIiMuD7y8uTrcLEZ0J5sKzbsJPQuMvYXr2b4ofk'
     );
 
-    async function signup() {
+    const signupForm = document.getElementById('signup-form');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
 
-      const { data, error } = await client.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: 'https://gib-create.github.io/Promptly-App/field_login_ui.html'
+        }
+      });
 
       if (error) {
-        document.getElementById('signup-error').innerText = error.message;
-        document.getElementById('signup-success').innerText = '';
+        errorMessage.textContent = error.message;
+        successMessage.textContent = '';
       } else {
-        const userId = data.user.id;
-        await client.from('users').insert({
-          auth_id: userId,
-          email,
-          role: 'root',
-          status: 'pending'  // Needs approval manually or via admin UI
-        });
-
-        document.getElementById('signup-success').innerText = 'Account created. Awaiting approval.';
-        document.getElementById('signup-error').innerText = '';
+        errorMessage.textContent = '';
+        successMessage.textContent = 'Account created. Please check your email to confirm.';
       }
-    }
+    });
   </script>
 </body>
 </html>
