@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Promptly Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      background-color: #f7f9fc;
+      color: #333;
+    }
+    header {
+      background-color: #004c99;
+      padding: 1rem;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+    }
+    .btn {
+      background: #0066cc;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #004c99;
+    }
+    main {
+      padding: 2rem;
+    }
+    .section {
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: white;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      transition: background-color 0.3s;
+    }
+    .card:hover {
+      background-color: #fff4e6;
+    }
+    .qr {
+      float: right;
+    }
+    .tag {
+      background: #e0e0e0;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Promptly Dashboard</h1>
+    <button class="btn" onclick="logout()">Logout</button>
+  </header>
+  <main>
+    <div class="section">
+      <h2>Your Assets</h2>
+      <div id="assets"></div>
+    </div>
+    <div class="section" id="users-section" style="display:none;">
+      <h2>Team Members</h2>
+      <div id="users"></div>
+    </div>
+  </main>
+  <script>
+    const supabase = window.supabase.createClient(
+      'https://nzhyjnsxgrkckjxwesbk.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
+    );
+
+    async function logout() {
+      await supabase.auth.signOut();
+      window.location.href = "index.html";
+    }
+
+    async function fetchProfile() {
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = "field_login.html";
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('auth_id', user.id)
+        .single();
+
+      return data;
+    }
+
+    async function loadAssets(userProfile) {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('hub_id', userProfile.hub_id);
+
+      const container = document.getElementById('assets');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p>No assets found.</p>';
+        return;
+      }
+
+      container.innerHTML = data.map(asset => `
+        <a href="asset_page.html?id=${asset.identifier}" style="text-decoration:none;color:inherit;">
+          <div class="card">
+            <strong>${asset.name}</strong>
+            <span class="tag">ID: ${asset.identifier}</span>
+            <canvas id="qr-${asset.id}" class="qr"></canvas><br/>
+            <small>${asset.description || 'No description provided.'}</small>
+          </div>
+        </a>
+      `).join("");
+
+      data.forEach(asset => {
+        QRCode.toCanvas(
+          document.getElementById('qr-' + asset.id),
+          window.location.origin + '/Promptly-App/field_login.html?id=' + asset.identifier
+        );
+      });
+    }
+
+    async function loadUsers(userProfile) {
+      if (userProfile.role === 'operator') return;
+      document.getElementById('users-section').style.display = 'block';
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('hub_id', userProfile.hub_id);
+
+      const container = document.getElementById('users');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p>No team members found.</p>';
+        return;
+      }
+
+      container.innerHTML = data.map(user => `
+        <div class="card">
+          <strong>${user.email}</strong>
+          <span class="tag">${user.role}</span>
+        </div>
+      `).join("");
+    }
+
+    (async () => {
+      const profile = await fetchProfile();
+      if (profile) {
+        loadAssets(profile);
+        loadUsers(profile);
+      }
+    })();
+  </script>
+</body>
+</html>
