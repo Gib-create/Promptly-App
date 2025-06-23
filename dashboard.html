@@ -73,134 +73,128 @@
     </section>
   </div>
 
-  <script>
-    const supabase = window.supabase.createClient(
-      'https://nzhyjnsxgrkckjwesbk.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
-    );
+<script>
+  const supabase = window.supabase.createClient(
+    'https://nzhyjnsxgrkckjwesbk.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
+  );
 
-    let user = null;
-    let hubId = null;
+  let user = null;
+  let hubId = null;
 
-    async function getOrCreateHub() {
-      const { data: userData } = await supabase.auth.getUser();
-      user = userData.user;
+  async function getOrCreateHub() {
+    const { data: userData } = await supabase.auth.getUser();
+    user = userData.user;
 
-      const { data: hub, error } = await supabase
+    const { data: hub, error } = await supabase
+      .from('hubs')
+      .select('*')
+      .eq('owner_id', user.id)
+      .single();
+
+    if (hub) {
+      hubId = hub.id;
+    } else {
+      const { data: newHub, error: hubError } = await supabase
         .from('hubs')
-        .select('*')
-        .eq('owner_id', user.id)
+        .insert([{ owner_id: user.id, name: 'My Hub' }])
+        .select()
         .single();
 
-      if (hub) {
-        hubId = hub.id;
-      } else {
-        const { data: newHub, error: hubError } = await supabase
-          .from('hubs')
-          .insert([{ owner_id: user.id, name: 'My Hub' }])
-          .select()
-          .single();
-
-        if (hubError) {
-          alert('Failed to create hub');
-          return;
-        }
-
-        hubId = newHub.id;
-      }
-    }
-
-    async function fetchAssets() {
-      const { data, error } = await supabase
-        .from('assets')
-        .select('*')
-        .eq('hub_id', hubId);
-
-      const container = document.getElementById('assets-list');
-      if (error || !data.length) {
-        container.innerHTML = 'No assets found.';
+      if (hubError) {
+        alert('Failed to create hub');
         return;
       }
 
-      container.innerHTML = '';
-      data.forEach(asset => {
-        const el = document.createElement('div');
-        el.className = 'asset';
-        el.innerHTML = `<strong>${asset.name}</strong><br>${asset.description}`;
-        container.appendChild(el);
-      });
+      hubId = newHub.id;
+    }
+  }
+
+  async function fetchAssets() {
+    const { data, error } = await supabase
+      .from('assets')
+      .select('*')
+      .eq('hub_id', hubId);
+
+    const container = document.getElementById('assets-list');
+    if (error || !data.length) {
+      container.innerHTML = 'No assets found.';
+      return;
     }
 
-    async function fetchUsers() {
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .neq('status', 'pending');
+    container.innerHTML = '';
+    data.forEach(asset => {
+      const el = document.createElement('div');
+      el.className = 'asset';
+      el.innerHTML = `<strong>${asset.name}</strong><br>${asset.description}`;
+      container.appendChild(el);
+    });
+  }
 
-      const container = document.getElementById('users-list');
-      if (error || !users.length) {
-        container.innerHTML = 'No team members found.';
-        return;
-      }
+  async function fetchUsers() {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .neq('status', 'pending');
 
-      container.innerHTML = '';
-      users.forEach(user => {
-        const el = document.createElement('div');
-        el.className = 'user';
-        el.innerText = `${user.email} - ${user.role}`;
-        container.appendChild(el);
-      });
+    const container = document.getElementById('users-list');
+    if (error || !users.length) {
+      container.innerHTML = 'No team members found.';
+      return;
     }
 
-    async function createAsset() {
-      const name = document.getElementById('asset-name').value.trim();
-      const identifier = document.getElementById('asset-identifier').value.trim();
-      const description = document.getElementById('asset-description').value.trim();
-      const context = document.getElementById('asset-context').value.trim();
+    container.innerHTML = '';
+    users.forEach(user => {
+      const el = document.createElement('div');
+      el.className = 'user';
+      el.innerText = `${user.email} - ${user.role}`;
+      container.appendChild(el);
+    });
+  }
 
-      if (!hubId) {
-        alert('Hub ID missing');
-        return;
-      }
+  async function createAsset() {
+    const name = document.getElementById('asset-name').value.trim();
+    const identifier = document.getElementById('asset-identifier').value.trim();
+    const description = document.getElementById('asset-description').value.trim();
+    const context = document.getElementById('asset-context').value.trim();
 
-      const { error } = await supabase.from('assets').insert([{
-        name, identifier, description, context_prompt: context, hub_id: hubId
-      }]);
-
-      if (error) {
-        alert('Failed to create asset: ' + error.message);
-      } else {
-        alert('Asset created!');
-        fetchAssets();
-      }
+    if (!hubId) {
+      alert('Hub ID missing');
+      return;
     }
 
-    async function logout() {
-      await supabase.auth.signOut();
+    const { error } = await supabase.from('assets').insert([{
+      name, identifier, description, context_prompt: context, hub_id: hubId
+    }]);
+
+    if (error) {
+      alert('Failed to create asset: ' + error.message);
+    } else {
+      alert('Asset created!');
+      fetchAssets();
+    }
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    window.location.href = '/Promptly-App/field_login_ui.html';
+  }
+
+  async function init() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (!session || !session.user) {
+      console.warn("No active session found, redirecting.");
       window.location.href = '/Promptly-App/field_login_ui.html';
+      return;
     }
 
-    async function init() {
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        if (!session) {
-          window.location.href = '/Promptly-App/field_login_ui.html';
-          return;
-        }
+    await getOrCreateHub();
+    await fetchAssets();
+    await fetchUsers();
+  }
 
-        await getOrCreateHub();
-        await fetchAssets();
-        await fetchUsers();
-      });
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await getOrCreateHub();
-        await fetchAssets();
-        await fetchUsers();
-      }
-    }
-
-    init();
-  </script>
+  init();
+</script>
 </body>
 </html>
