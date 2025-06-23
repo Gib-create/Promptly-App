@@ -2,204 +2,176 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Promptly – Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Promptly Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f4f6f9;
-    }
-    header {
-      background-color: #1e3a8a;
-      color: white;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    header h1 {
-      margin: 0;
-      font-size: 1.5rem;
-    }
-    .container {
-      padding: 2rem;
-      max-width: 1200px;
-      margin: auto;
-    }
-    .section {
-      margin-bottom: 2rem;
-    }
-    .section h2 {
-      color: #1e3a8a;
-      margin-bottom: 1rem;
-    }
-    .asset-card, .user-card {
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    }
-    .btn {
-      background-color: #1e3a8a;
-      color: white;
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      margin-top: 0.5rem;
-    }
-    .btn:hover {
-      background-color: #153176;
-    }
-    .input-box {
-      margin-top: 1rem;
-    }
+    body { font-family: sans-serif; background: #f7f9fc; padding: 0 2rem; }
+    header { background: #173f8a; padding: 1rem; color: white; display: flex; justify-content: space-between; align-items: center; }
+    h1 { margin: 0; }
+    button { padding: 0.5rem 1rem; cursor: pointer; }
+    section { margin-top: 2rem; }
+    .input-group { margin: 1rem 0; display: flex; flex-direction: column; }
+    .asset { border-bottom: 1px solid #ccc; padding: 0.5rem 0; }
+    input, textarea { padding: 0.5rem; margin-top: 0.3rem; width: 100%; }
+    #invite-user-section { display: none; margin-top: 2rem; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Promptly Hub Dashboard</h1>
-    <button class="btn" onclick="logout()">Logout</button>
-  </header>
-  <div class="container">
-    <div class="section">
-      <h2>Your Assets</h2>
-      <div id="assetControls"></div>
-      <div id="assets"></div>
-    </div>
-    <div class="section">
-      <h2>Users in Your Hub</h2>
-      <div id="userControls"></div>
-      <div id="users"></div>
-    </div>
+
+<header>
+  <h1>Promptly Hub Dashboard</h1>
+  <button onclick="logout()">Logout</button>
+</header>
+
+<section>
+  <h2>Your Assets</h2>
+  <div id="assets"></div>
+
+  <h3>Add New Asset</h3>
+  <div class="input-group">
+    <input id="name" placeholder="Asset Name" />
+    <input id="identifier" placeholder="Identifier" />
+    <textarea id="description" placeholder="Description"></textarea>
+    <textarea id="context_prompt" placeholder="Context Prompt"></textarea>
+    <button onclick="createAsset()">Create Asset</button>
   </div>
+</section>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-  <script>
-    const supabase = window.supabase.createClient(
-      'https://nzhyjnsxgrkckjxwesbk.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
-    );
+<section id="invite-user-section">
+  <h2>Invite User to Your Hub</h2>
+  <div class="input-group">
+    <input id="inviteEmail" placeholder="User email to invite" />
+    <button onclick="inviteUser()">Send Invite</button>
+  </div>
+</section>
 
-    let profile = null;
-    let root_id = null;
+<section>
+  <h2>Users in Your Hub</h2>
+  <div id="users"></div>
+</section>
 
-    async function logout() {
-      await supabase.auth.signOut();
-      window.location.href = 'field.login.html';
+<script>
+  const supabase = supabase.createClient('https://YOUR_PROJECT_REF.supabase.co', 'YOUR_PUBLIC_ANON_KEY');
+
+  let currentUser = null;
+  let userRole = null;
+  let hubId = null;
+
+  async function init() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return window.location.href = 'signup.html';
+    currentUser = session.user;
+
+    const { data: userData, error } = await supabase
+      .from('users')
+      .select('id, role, status')
+      .eq('auth_id', currentUser.id)
+      .single();
+
+    if (error || !userData || userData.status !== 'approved') return window.location.href = 'signup.html';
+
+    userRole = userData.role;
+
+    const { data: hubs } = await supabase
+      .from('hubs')
+      .select('id')
+      .eq('owner_id', userData.id)
+      .maybeSingle();
+
+    if (hubs) {
+      hubId = hubs.id;
+    } else {
+      const { data: memberHub } = await supabase
+        .from('hubs')
+        .select('id')
+        .eq('id', userData.hub_id)
+        .maybeSingle();
+      hubId = memberHub?.id;
     }
 
-    async function loadDashboard() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return location.href = 'field.login.html';
-
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_id', user.id)
+    if (!hubId) {
+      const { data: newHub } = await supabase
+        .from('hubs')
+        .insert([{ name: 'My Hub', owner_id: userData.id }])
+        .select()
         .single();
+      hubId = newHub.id;
+    }
 
-      if (error || data.status !== 'approved') return alert('Access not approved.');
+    if (userRole === 'root') document.getElementById('invite-user-section').style.display = 'block';
 
-      profile = data;
-      root_id = profile.root_id || profile.id;
+    loadAssets();
+    loadUsers();
+  }
 
+  async function loadAssets() {
+    const { data: assets } = await supabase
+      .from('assets')
+      .select('*')
+      .eq('hub_id', hubId);
+
+    const container = document.getElementById('assets');
+    container.innerHTML = assets.length
+      ? assets.map(asset => `
+        <div class="asset">
+          <strong>${asset.name}</strong> - ${asset.identifier}<br/>
+          ${asset.description}<br/>
+          <a href="asset_page.html?id=${asset.id}" target="_blank">QR Link</a>
+        </div>
+      `).join('')
+      : 'No assets found.';
+  }
+
+  async function loadUsers() {
+    const { data: users } = await supabase
+      .from('users')
+      .select('email, role, status')
+      .eq('hub_id', hubId);
+
+    const container = document.getElementById('users');
+    container.innerHTML = users.length
+      ? users.map(u => `<div>${u.email} - ${u.role} (${u.status})</div>`).join('')
+      : 'No users found.';
+  }
+
+  async function createAsset() {
+    const name = document.getElementById('name').value;
+    const identifier = document.getElementById('identifier').value;
+    const description = document.getElementById('description').value;
+    const context_prompt = document.getElementById('context_prompt').value;
+
+    const { error } = await supabase
+      .from('assets')
+      .insert([{ name, identifier, description, context_prompt, hub_id: hubId }]);
+
+    if (error) {
+      alert('Failed to create asset');
+    } else {
+      alert('Asset created');
       loadAssets();
+    }
+  }
+
+  async function inviteUser() {
+    const email = document.getElementById('inviteEmail').value;
+    const { error } = await supabase
+      .from('users')
+      .insert([{ email, role: 'manager', status: 'pending', hub_id: hubId }]);
+
+    if (error) {
+      alert('Invite failed');
+    } else {
+      alert('Invite sent');
       loadUsers();
-      renderControls();
     }
+  }
 
-    async function loadAssets() {
-      const { data: assets } = await supabase
-        .from('assets')
-        .select('*')
-        .eq('root_id', root_id);
+  function logout() {
+    supabase.auth.signOut().then(() => window.location.href = 'signup.html');
+  }
 
-      const container = document.getElementById('assets');
-      container.innerHTML = '';
-      assets.forEach(asset => {
-        const div = document.createElement('div');
-        div.className = 'asset-card';
-        div.innerHTML = `
-          <strong>${asset.name}</strong><br>
-          ${asset.description || 'No description'}<br>
-          <canvas id="qr-${asset.id}" class="qr"></canvas>
-        `;
-        container.appendChild(div);
-        QRCode.toCanvas(document.getElementById(`qr-${asset.id}`), 
-          `https://gib-create.github.io/Promptly-App/asset_page.html?id=\${asset.identifier}`);
-      });
-    }
-
-    async function loadUsers() {
-      const { data: users } = await supabase
-        .from('users')
-        .select('*')
-        .eq('root_id', root_id);
-
-      const container = document.getElementById('users');
-      container.innerHTML = '';
-      users.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'user-card';
-        div.innerHTML = \`
-          <strong>\${user.email}</strong><br>
-          Role: \${user.role}<br>
-          Status: \${user.status}
-        \`;
-        container.appendChild(div);
-      });
-    }
-
-    function renderControls() {
-      const assetControls = document.getElementById('assetControls');
-      const userControls = document.getElementById('userControls');
-      assetControls.innerHTML = '';
-      userControls.innerHTML = '';
-
-      if (profile.role === 'root' || profile.role === 'manager') {
-        const addAssetBtn = document.createElement('button');
-        addAssetBtn.className = 'btn';
-        addAssetBtn.textContent = 'Add Asset';
-        addAssetBtn.onclick = () => {
-          const name = prompt('Asset name?');
-          const desc = prompt('Description?');
-          const identifier = Math.random().toString(36).substr(2, 8);
-          if (name) {
-            supabase.from('assets').insert({
-              name, description: desc, identifier, root_id
-            }).then(loadAssets);
-          }
-        };
-        assetControls.appendChild(addAssetBtn);
-      }
-
-      if (profile.role === 'root') {
-        const inviteBtn = document.createElement('button');
-        inviteBtn.className = 'btn';
-        inviteBtn.textContent = 'Invite User to Hub';
-        inviteBtn.onclick = async () => {
-          const email = prompt('User email to invite?');
-          const role = prompt('Role (manager or operator)?');
-          if (email && role) {
-            await supabase.from('users').insert({
-              email, role, status: 'pending', root_id
-            });
-            loadUsers();
-          }
-        };
-        userControls.appendChild(inviteBtn);
-      }
-    }
-
-    loadDashboard();
-  </script>
+  init();
+</script>
 </body>
 </html>
