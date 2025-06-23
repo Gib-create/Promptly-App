@@ -83,15 +83,6 @@
     let hubId = null;
 
     async function getOrCreateHub() {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      console.log("User fetched:", userData, userError);
-
-      user = userData.user;
-      if (!user) {
-        alert("No user data found.");
-        return;
-      }
-
       const { data: hub, error } = await supabase
         .from('hubs')
         .select('*')
@@ -100,7 +91,6 @@
 
       if (hub) {
         hubId = hub.id;
-        console.log("Existing hub loaded:", hub);
       } else {
         const { data: newHub, error: hubError } = await supabase
           .from('hubs')
@@ -109,30 +99,22 @@
           .single();
 
         if (hubError) {
-          console.error("Hub creation failed:", hubError);
-          alert('Failed to create hub: ' + hubError.message);
+          alert('Failed to create hub');
           return;
         }
 
         hubId = newHub.id;
-        console.log("New hub created:", newHub);
       }
     }
 
     async function fetchAssets() {
-      const container = document.getElementById('assets-list');
       const { data, error } = await supabase
         .from('assets')
         .select('*')
         .eq('hub_id', hubId);
 
-      if (error) {
-        container.innerHTML = 'Error loading assets.';
-        console.error(error);
-        return;
-      }
-
-      if (!data.length) {
+      const container = document.getElementById('assets-list');
+      if (error || !data.length) {
         container.innerHTML = 'No assets found.';
         return;
       }
@@ -147,19 +129,14 @@
     }
 
     async function fetchUsers() {
-      const container = document.getElementById('users-list');
       const { data: users, error } = await supabase
         .from('users')
         .select('*')
-        .neq('status', 'pending');
+        .neq('status', 'pending')
+        .eq('hub_id', hubId);
 
-      if (error) {
-        container.innerHTML = 'Error loading users.';
-        console.error(error);
-        return;
-      }
-
-      if (!users.length) {
+      const container = document.getElementById('users-list');
+      if (error || !users.length) {
         container.innerHTML = 'No team members found.';
         return;
       }
@@ -168,7 +145,7 @@
       users.forEach(user => {
         const el = document.createElement('div');
         el.className = 'user';
-        el.innerText = `${user.email} - ${user.role}`;
+        el.innerText = `${user.email} – ${user.role}`;
         container.appendChild(el);
       });
     }
@@ -198,30 +175,11 @@
 
     async function logout() {
       await supabase.auth.signOut();
-      window.location.replace('field_login_ui.html');
+      window.location.href = '/Promptly-App/field_login_ui.html';
     }
 
     async function init() {
-      console.log("Initializing dashboard...");
-
-      // Listen for auth changes in case of refresh
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth state changed:", event, session);
-
-        if (!session || !session.user) {
-          window.location.replace('field_login_ui.html');
-          return;
-        }
-
-        user = session.user;
-        await getOrCreateHub();
-        await fetchAssets();
-        await fetchUsers();
-      });
-
-      // Try loading session directly
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log("Session from getSession():", session);
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (session && session.user) {
         user = session.user;
@@ -229,7 +187,16 @@
         await fetchAssets();
         await fetchUsers();
       } else {
-        console.warn("No session found, waiting for onAuthStateChange...");
+        supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (session && session.user) {
+            user = session.user;
+            await getOrCreateHub();
+            await fetchAssets();
+            await fetchUsers();
+          } else {
+            window.location.replace('/Promptly-App/field_login_ui.html');
+          }
+        });
       }
     }
 
