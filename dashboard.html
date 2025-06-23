@@ -4,169 +4,160 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Promptly Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f6fa;
+      background-color: #f3f4f6;
       margin: 0;
+      padding: 0;
     }
     header {
-      background: #004999;
+      background-color: #004899;
       color: white;
       padding: 1rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      font-size: 1.5rem;
     }
-    h1 { margin: 0; }
-    .container { padding: 2rem; }
-    .section { margin-bottom: 2rem; }
-    .form-group { margin-bottom: 1rem; }
+    .container {
+      padding: 2rem;
+    }
+    h2 {
+      margin-top: 2rem;
+    }
     input, textarea, button {
+      display: block;
+      margin: 0.5rem 0;
       padding: 0.5rem;
       width: 100%;
       max-width: 500px;
-      margin-bottom: 0.5rem;
     }
-    .card {
-      background: white;
-      padding: 1rem;
-      margin: 0.5rem 0;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    .link {
-      color: #004999;
-      text-decoration: underline;
+    button {
+      background-color: #1976d2;
+      color: white;
+      border: none;
       cursor: pointer;
+    }
+    button:hover {
+      background-color: #125ea5;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Promptly Dashboard</h1>
-    <button onclick="logout()">Logout</button>
+    Promptly Dashboard
+    <button onclick="logout()" style="float: right; background-color: white; color: #004899;">Logout</button>
   </header>
-
   <div class="container">
-    <div class="section">
+    <section>
       <h2>Your Assets</h2>
-      <div id="assets-list">Loading assets...</div>
-    </div>
+      <div id="assets">Loading assets...</div>
+    </section>
 
-    <div class="section" id="create-asset">
+    <section>
       <h3>Add New Asset</h3>
-      <div class="form-group">
-        <input id="asset-name" placeholder="Name" />
-        <input id="asset-identifier" placeholder="Identifier" />
-        <textarea id="asset-description" placeholder="Description"></textarea>
-        <textarea id="asset-context" placeholder="Context Prompt"></textarea>
-        <button onclick="createAsset()">Create Asset</button>
-      </div>
-    </div>
+      <input type="text" id="asset-name" placeholder="Asset Name" />
+      <input type="text" id="asset-identifier" placeholder="Identifier" />
+      <textarea id="asset-description" placeholder="Description"></textarea>
+      <textarea id="asset-context" placeholder="Context Prompt"></textarea>
+      <button id="create-asset-btn">Create Asset</button>
+    </section>
 
-    <div class="section" id="invite-member" style="display:none">
-      <h3>Invite Team Member</h3>
-      <div class="form-group">
-        <input id="invite-email" placeholder="Email Address" />
-        <button onclick="inviteMember()">Send Invite</button>
-      </div>
-    </div>
-
-    <div class="section">
+    <section>
       <h2>Team Members</h2>
-      <div id="team-list">Loading team...</div>
-    </div>
+      <div id="team">Loading team...</div>
+    </section>
   </div>
 
-  <script>
-    const supabase = supabase.createClient('https://nzhyjnsxgrkckjxwesbk.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70');
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-    let user = null;
+    const supabaseUrl = 'https://nzhyjnsxgrkckjxwesbk.supabase.co';
+    const supabaseKey = 'YOUR_ANON_KEY_HERE'; // Replace this with your actual anon key
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     let hub_id = null;
-    let role = null;
 
     async function init() {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) return window.location.href = 'field_login_ui.html';
-      user = currentUser;
-
-      const { data: userData } = await supabase.from('users').select('*').eq('auth_id', user.id).single();
-      if (!userData || userData.status !== 'approved') {
-        alert('Account not approved.');
-        return logout();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = 'signup.html';
+        return;
       }
 
-      role = userData.role;
-      const { data: hub } = await supabase.from('hubs').select('*').eq('owner_id', user.id).single();
-      hub_id = hub?.id;
+      const { data: hub } = await supabase
+        .from('hubs')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
 
-      if (role === 'admin' || role === 'root') {
-        document.getElementById('invite-member').style.display = 'block';
+      if (!hub) {
+        document.getElementById('assets').innerText = 'No hub found.';
+        return;
       }
 
+      hub_id = hub.id;
       loadAssets();
       loadTeam();
     }
 
     async function loadAssets() {
-      const { data, error } = await supabase.from('assets').select('*').eq('hub_id', hub_id);
-      const list = document.getElementById('assets-list');
-      if (!data || data.length === 0) return list.innerHTML = '<p>No assets found.</p>';
-      list.innerHTML = '';
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*')
+        .eq('hub_id', hub_id);
+
+      const container = document.getElementById('assets');
+      container.innerHTML = data.length ? '' : 'No assets found.';
       data.forEach(asset => {
-        const link = `asset_page.html?id=${asset.id}`;
-        list.innerHTML += `<div class="card">
-          <strong>${asset.name}</strong><br>
-          ${asset.description}<br>
-          <a class="link" href="${link}">View Asset</a>
-        </div>`;
+        const div = document.createElement('div');
+        div.textContent = `${asset.name} (${asset.identifier})`;
+        container.appendChild(div);
       });
     }
 
     async function loadTeam() {
-      const { data, error } = await supabase.from('users').select('*');
-      const team = document.getElementById('team-list');
-      if (!data || data.length === 0) return team.innerHTML = '<p>No team members found.</p>';
-      team.innerHTML = '';
-      data.forEach(member => {
-        team.innerHTML += `<div class="card">
-          ${member.email} - ${member.role} [${member.status}]
-        </div>`;
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('status', 'approved');
+
+      const container = document.getElementById('team');
+      container.innerHTML = data.length ? '' : 'No team members found.';
+      data.forEach(user => {
+        const div = document.createElement('div');
+        div.textContent = `${user.email} (${user.role})`;
+        container.appendChild(div);
       });
     }
 
-    async function createAsset() {
+    document.getElementById('create-asset-btn').addEventListener('click', async () => {
       const name = document.getElementById('asset-name').value;
       const identifier = document.getElementById('asset-identifier').value;
       const description = document.getElementById('asset-description').value;
       const context = document.getElementById('asset-context').value;
-      if (!name || !identifier || !hub_id) return alert('Missing fields');
 
-      await supabase.from('assets').insert({
-        name, identifier, description,
+      if (!hub_id) {
+        alert('Hub not loaded.');
+        return;
+      }
+
+      const { error } = await supabase.from('assets').insert({
+        name,
+        identifier,
+        description,
         context_prompt: context,
         hub_id
       });
-      loadAssets();
-    }
 
-    async function inviteMember() {
-      const email = document.getElementById('invite-email').value;
-      if (!email) return alert('Enter email');
-
-      await supabase.from('users').insert({
-        email,
-        status: 'pending',
-        role: 'user'
-      });
-      loadTeam();
-    }
+      if (error) {
+        alert('Error creating asset: ' + error.message);
+      } else {
+        loadAssets();
+      }
+    });
 
     async function logout() {
       await supabase.auth.signOut();
-      window.location.href = 'field_login_ui.html';
+      window.location.href = 'signup.html';
     }
 
     init();
