@@ -137,23 +137,24 @@
       : 'No users found.';
   }
 
-  async function createAsset() {
-    const name = document.getElementById('name').value;
-    const identifier = document.getElementById('identifier').value;
-    const description = document.getElementById('description').value;
-    const context_prompt = document.getElementById('context_prompt').value;
+async function createAsset() {
+  const name = document.getElementById('name').value;
+  const identifier = document.getElementById('identifier').value;
+  const description = document.getElementById('description').value;
+  const context_prompt = document.getElementById('context_prompt').value;
 
-    const { error } = await supabase
-      .from('assets')
-      .insert([{ name, identifier, description, context_prompt, hub_id: hubId }]);
+  const { error, data } = await supabase
+    .from('assets')
+    .insert([{ name, identifier, description, context_prompt, hub_id: hubId }]);
 
-    if (error) {
-      alert('Failed to create asset');
-    } else {
-      alert('Asset created');
-      loadAssets();
-    }
+  if (error) {
+    console.error("Create asset error:", error);
+    alert('Failed to create asset: ' + error.message);
+  } else {
+    alert('Asset created');
+    loadAssets();
   }
+}
 
   async function inviteUser() {
     const email = document.getElementById('inviteEmail').value;
