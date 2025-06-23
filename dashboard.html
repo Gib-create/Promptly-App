@@ -183,7 +183,7 @@
     async function init() {
       supabase.auth.onAuthStateChange(async (event, session) => {
         if (!session) {
-          window.location.href = '/Promptly-App/login.html';
+          window.location.href = '/Promptly-App/field_login_ui.html';
           return;
         }
 
