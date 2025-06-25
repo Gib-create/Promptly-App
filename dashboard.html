@@ -82,22 +82,46 @@
   let hubId = null;
 
   async function getOrCreateHub() {
-    const { data: hub } = await supabase
-      .from('hubs')
-      .select('*')
-      .eq('owner_id', user.id)
+    // Get the authenticated user ID from the session
+    const { data: sessionData } = await supabase.auth.getSession();
+    const authId = sessionData?.session?.user?.id;
+
+    if (!authId) {
+      console.error('No active session found');
+      return;
+    }
+
+    // Look up the internal user row using the auth ID
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_id', authId)
       .single();
 
-    if (hub) {
-      hubId = hub.id;
+    if (userError || !userRow) {
+      console.error('Failed to find user row:', userError?.message || 'Not found');
+      return;
+    }
+
+    const internalUserId = userRow.id;
+
+    // Check if a hub already exists for this user
+    const { data: existingHub } = await supabase
+      .from('hubs')
+      .select('*')
+      .eq('owner_id', internalUserId)
+      .single();
+
+    if (existingHub) {
+      hubId = existingHub.id;
     } else {
-      const { data: newHub, error: hubError } = await supabase
+      const { data: newHub, error: hubCreateError } = await supabase
         .from('hubs')
-        .insert([{ owner_id: user.id, name: 'My Hub' }])
+        .insert([{ owner_id: internalUserId, name: 'My Hub' }])
         .select()
         .single();
 
-      if (hubError) {
+      if (hubCreateError) {
         alert('Failed to create hub');
         return;
       }
