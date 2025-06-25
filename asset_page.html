@@ -99,15 +99,34 @@
         <div id="noteList"></div>
       </div>
     </div>
+
+    <div class="section">
+      <h2>Asset QR Code</h2>
+      <div class="card" style="text-align:center;">
+        <div id="assetQR"></div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     const supabase = window.supabase.createClient(  
       'https://nzhyjnsxgrkckjxwesbk.supabase.co',
 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56aHlqbnN4Z3JrY2tqeHdlc2JrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAyNjgzOTQsImV4cCI6MjA2NTg0NDM5NH0.ZZ5fIgYXhcPyGt3mhI_sx7j8bnOkS7HxuIKfyXeoI70'
     );
     const assetId = new URLSearchParams(window.location.search).get('id');
+    const assetUrl = `${window.location.origin}${window.location.pathname}?id=${assetId}`;
+
+    function generateQR() {
+      const qrContainer = document.getElementById('assetQR');
+      qrContainer.innerHTML = '';
+      new QRCode(qrContainer, {
+        text: assetUrl,
+        width: 128,
+        height: 128
+      });
+    }
 
     async function logout() {
       await supabase.auth.signOut();
@@ -193,6 +212,7 @@
 
     loadFiles();
     loadNotes();
+    generateQR();
   </script>
 </body>
 </html>
