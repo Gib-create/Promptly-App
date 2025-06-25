@@ -136,6 +136,11 @@
 
       const fileList = document.getElementById('fileList');
       fileList.innerHTML = '';
+
+      if (error) {
+        console.error('Error loading files:', error);
+        return;
+      }
       if (data) {
         for (const file of data) {
           const link = await supabase.storage
@@ -191,6 +196,11 @@
 
       const noteList = document.getElementById('noteList');
       noteList.innerHTML = '';
+
+      if (error) {
+        console.error('Error loading notes:', error);
+        return;
+      }
 
       if (data) {
         data.forEach(note => {
