@@ -146,7 +146,10 @@
     data.forEach(asset => {
       const el = document.createElement('div');
       el.className = 'asset';
-      el.innerHTML = `<strong>${asset.name}</strong><br>${asset.description}`;
+      el.innerHTML = `
+        <a href="asset_page.html?id=${asset.id}"><strong>${asset.name}</strong></a><br>
+        ${asset.description}
+      `;
       container.appendChild(el);
     });
   }
