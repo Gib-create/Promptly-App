@@ -1,0 +1,6 @@
+[
+  {"name": "Authentication Service", "status": "operational"},
+  {"name": "Database", "status": "operational"},
+  {"name": "Email Service", "status": "degraded"},
+  {"name": "File Storage", "status": "maintenance"}
+]
