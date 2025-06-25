@@ -61,10 +61,7 @@
     button:hover {
       background-color: #153176;
     }
-    .file-entry {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .file-entry, .note-entry {
       margin-top: 0.5rem;
     }
     .file-entry a {
@@ -73,6 +70,9 @@
     }
     .file-entry a:hover {
       text-decoration: underline;
+    }
+    .note-entry small {
+      color: #555;
     }
   </style>
 </head>
@@ -118,7 +118,7 @@
       const file = document.getElementById('fileUpload').files[0];
       if (!file) return;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('asset-files')
         .upload(`${assetId}/${file.name}`, file);
 
@@ -157,13 +157,29 @@
         data: { user }
       } = await supabase.auth.getUser();
 
-      await supabase.from('notes').insert({
+      const { data: usersRow, error: userLookupError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_id', user.id)
+        .single();
+
+      if (userLookupError) {
+        alert('User lookup failed: ' + userLookupError.message);
+        return;
+      }
+
+      const { error } = await supabase.from('notes').insert({
         asset_id: assetId,
-        author_id: user.id,
+        user_id: usersRow.id,
         content: note
       });
-      document.getElementById('noteText').value = '';
-      loadNotes();
+
+      if (error) {
+        alert('Error adding note: ' + error.message);
+      } else {
+        document.getElementById('noteText').value = '';
+        loadNotes();
+      }
     }
 
     async function loadNotes() {
@@ -175,9 +191,15 @@
 
       const noteList = document.getElementById('noteList');
       noteList.innerHTML = '';
-      data.forEach(note => {
-        noteList.innerHTML += `<div class="file-entry"><strong>${note.content}</strong><br><small>${note.created_at}</small></div>`;
-      });
+
+      if (data) {
+        data.forEach(note => {
+          noteList.innerHTML += `<div class="note-entry">
+            <strong>${note.content}</strong><br>
+            <small>${new Date(note.created_at).toLocaleString()}</small>
+          </div>`;
+        });
+      }
     }
 
     loadFiles();
